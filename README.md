@@ -56,7 +56,7 @@ Please document how to run the scraper (this can just be a few lines of comments
 | Placeholder | | ![Needs Standardization](https://img.shields.io/badge/scraper-needs%20standardization-yellow.svg) |
 | Placeholder | | ![Broken](https://img.shields.io/badge/scraper-broken-red.svg) |
 | Placeholder | | ![Incomplete](https://img.shields.io/badge/scraper-incomplete-lightgrey.svg) |
-| [Atlanta Audubon Society](https://www.atlantaaudubon.org/field-trips) | [Gist](https://gist.github.com/saussy/54cbfda181a4318ad3a237f4350d444b) | ![Not in Repo](https://img.shields.io/badge/scraper-not%20in%20repo-orange.svg) |
-| [RAMBO](http://www.rambo-mtb.org/events/?view=calendar&month=September-2017) | [Gist](https://gist.github.com/saussy/b314991f9797aa7df91f27c81613b756) | ![Not in Repo](https://img.shields.io/badge/scraper-not%20in%20repo-orange.svg) |
+| [Atlanta Audubon Society](https://www.atlantaaudubon.org/field-trips) | [/python/audobon.py](https://github.com/codeforatlanta/nature-events-calendar/blob/master/python/audobon.py) | ![Broken](https://img.shields.io/badge/scraper-broken-red.svg) |
+| [RAMBO](http://www.rambo-mtb.org/events/?view=calendar&month=September-2017) | [/python/rambo-mtb.py](https://github.com/codeforatlanta/nature-events-calendar/blob/master/python/rambo-mtb.py) | ![Needs Standardization](https://img.shields.io/badge/scraper-needs%20standardization-yellow.svg) |
 | [Atlanta Botanical Garden](http://atlantabg.org/calendar) | [Gist](https://gist.github.com/bollwyvl/4e2d9d601c4beb06f61252fc0617880e) | ![Not in Repo](https://img.shields.io/badge/scraper-not%20in%20repo-orange.svg) |
-| [City of Sandy Springs](https://www.visitsandysprings.org/events/?categories%5B0%5D=25) | [Gist](https://gist.github.com/saussy/a997afc72583e644a13489c8a8f46835) | ![Not in Repo](https://img.shields.io/badge/scraper-not%20in%20repo-orange.svg) |
+| [City of Sandy Springs](https://www.visitsandysprings.org/events/?categories%5B0%5D=25) | [/python/sandysprings.py](https://github.com/codeforatlanta/nature-events-calendar/blob/master/python/sandysprings.py) | ![Broken](https://img.shields.io/badge/scraper-broken-red.svg) |

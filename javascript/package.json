@@ -1,0 +1,16 @@
+{
+  "name": "nature-events-calendar-js",
+  "version": "0.0.1",
+  "description": "Atlanta Nature Events Calendar Javascript Scrapers",
+  "main": "bhnp.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Code for Atlanta",
+  "license": "BSD-3-Clause",
+  "dependencies": {
+    "axios": "^0.17.1",
+    "json2csv": "^3.11.5",
+    "moment": "^2.19.2"
+  }
+}

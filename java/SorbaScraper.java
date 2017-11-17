@@ -18,10 +18,14 @@ import org.jsoup.select.Elements;
 
 /*
 
-This java program scrapes the REI site for events around zip code 30306, 
+IN PROGRESS
+
+==========================================================================================
+
+This java program scrapes the SORBA Atlanta site for events, 
 starting with page 1, and going until there is no Next page.
 
-The program outputs to file "rei.csv" with a header line.
+The program outputs to file "sorba.csv" with a header line.
 
 If the file already exists before running the program, user is prompted for 
 whether they want to overwrite the file.
@@ -45,31 +49,30 @@ dstrube@gmail.com
 Compile:
 Mac:
 javac -cp bin/joda-time-2.9.9.jar -d bin IScraperRow.java 
-javac -cp bin:bin/joda-time-2.9.9.jar:bin/jsoup-1.11.1.jar -d bin ReiScraper.java
+javac -cp bin:bin/joda-time-2.9.9.jar:bin/jsoup-1.11.1.jar -d bin SorbaScraper.java
 Windows:
 javac -cp bin\joda-time-2.9.9.jar -d bin IScraperRow.java 
-javac -cp bin;bin\joda-time-2.9.9.jar;bin\jsoup-1.11.1.jar; -d bin ReiScraper.java
+javac -cp bin;bin\joda-time-2.9.9.jar;bin\jsoup-1.11.1.jar; -d bin SorbaScraper.java
 
 Run:
 Mac:
-java -cp bin:bin/joda-time-2.9.9.jar:bin/jsoup-1.11.1.jar ReiScraper
+java -cp bin:bin/joda-time-2.9.9.jar:bin/jsoup-1.11.1.jar SorbaScraper
 Windows:
-java -cp bin;bin\joda-time-2.9.9.jar;bin\jsoup-1.11.1.jar; ReiScraper
-
+java -cp bin;bin\joda-time-2.9.9.jar;bin\jsoup-1.11.1.jar; SorbaScraper
 */
 
 
-public class ReiScraper {
+public class SorbaScraper {
 
-	private static final String URL1 = "https://www.rei.com/events/p/us-ga-atlanta/a/all-activities?page=";
-	private static final String URL2 = "&previousLocation=30306";
+	private static final String URL1 = "http://sorbaatlanta.org/events/list/?tribe_paged=";
+	private static final String URL2 = "&tribe_event_display=list";
 	private static int pageNumber = 1;
 	private static boolean isNextPageAvailable = true;
-	private static final List<ReiScraperRow> reiScraperRows = new ArrayList<>();
+	private static final List<IScraperRow> sorbaScraperRows = new ArrayList<>();
 	private static final int JSOUP_TIMEOUT = 8000;
 
 	public static void main(String[] args) {
-
+/*
 		//Verify the output file doesn't exist before wasting resources getting the data
 		final String fileName = "rei.csv";
 		final Path path = Paths.get(fileName);
@@ -163,10 +166,11 @@ public class ReiScraper {
 		}catch(Exception e){
 			System.out.println("Exception");
             e.printStackTrace();
-		}
+		}*/
 	}
 
 	private static boolean getNextPage(){
+	/*
 		try {
 			final String URL = URL1 + pageNumber + URL2;
             final Response res = Jsoup.connect(URL).timeout(JSOUP_TIMEOUT).execute(); 
@@ -310,6 +314,7 @@ public class ReiScraper {
             e.printStackTrace();
             return false;
         }
+        */
         return true;
 	}
 	
@@ -378,8 +383,8 @@ public class ReiScraper {
 		}
 	}
 
-	private static class ReiScraperRow implements IScraperRow{
-		public final String organizer = "REI";
+	private static class SorbaScraperRow implements IScraperRow{
+		public final String organizer = "SORBA Atlanta";
 		public String title;
 		public String description;
 		public String url;
@@ -388,8 +393,8 @@ public class ReiScraper {
 		public LocalDate endDate;
 		public LocalTime startTime;
 		public LocalTime endTime;
-		public String cost;
+		public String cost = "IMBA membership (https://win.imba.com/join?chapter=SORBA%20Atlanta)";
 		//public String rsvpInfo; // same as url
-		public ReiScraperRow(){}
+		public SorbaScraperRow(){}
 	}
 }

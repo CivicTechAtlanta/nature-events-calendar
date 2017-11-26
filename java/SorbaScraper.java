@@ -50,31 +50,31 @@ Compile:
 Mac:
 javac -cp bin/joda-time-2.9.9.jar -d bin IScraperRow.java 
 javac -cp bin:bin/joda-time-2.9.9.jar:bin/jsoup-1.11.1.jar -d bin SorbaScraper.java
-Windows:
+Windows [unverified]:
 javac -cp bin\joda-time-2.9.9.jar -d bin IScraperRow.java 
 javac -cp bin;bin\joda-time-2.9.9.jar;bin\jsoup-1.11.1.jar; -d bin SorbaScraper.java
 
 Run:
 Mac:
 java -cp bin:bin/joda-time-2.9.9.jar:bin/jsoup-1.11.1.jar SorbaScraper
-Windows:
+Windows [unverified]:
 java -cp bin;bin\joda-time-2.9.9.jar;bin\jsoup-1.11.1.jar; SorbaScraper
+
 */
 
 
 public class SorbaScraper {
-
-	private static final String URL1 = "http://sorbaatlanta.org/events/list/?tribe_paged=";
-	private static final String URL2 = "&tribe_event_display=list";
-	private static int pageNumber = 1;
-	private static boolean isNextPageAvailable = true;
+	//As of last commit, all the upcoming events are on the same page. 
+	//If that changes, this logic will need to change.
+	private static final String URL = "http://sorbaatlanta.org/events/list/?tribe_paged=1&tribe_event_display=list";
+	private static int eventNumber = 1;
+	private static boolean isNextEventAvailable = true;
 	private static final List<IScraperRow> sorbaScraperRows = new ArrayList<>();
 	private static final int JSOUP_TIMEOUT = 8000;
 
 	public static void main(String[] args) {
-/*
 		//Verify the output file doesn't exist before wasting resources getting the data
-		final String fileName = "rei.csv";
+		final String fileName = "sorba.csv";
 		final Path path = Paths.get(fileName);
 		try{
 			if (Files.exists(path)){
@@ -95,18 +95,44 @@ public class SorbaScraper {
 		}
 		
 		//Get the data
-		while (isNextPageAvailable){
-			if (!getNextPage()) return;
-			pageNumber++;
-			//System.out.println("isNextPageAvailable: " + isNextPageAvailable);
+		Elements content;
+		try {
+            final Response response = Jsoup.connect(URL).timeout(JSOUP_TIMEOUT).execute(); 
+            //anything less than 6000 times out for me during normal network conditions; 
+            //8000 is safer during heavy traffic
+
+            final Document document = response.parse();
+
+            if (document == null){
+            	System.out.println("Error: document is null.");
+            	return;
+            }
+			
+            content = document.getElementsByClass("tribe-events-loop");
+            if (!verifyOne(content, "content")){
+            	return;
+            }
+        } catch (Exception e) {
+			System.out.println("Exception at event " + eventNumber);
+            e.printStackTrace();
+            return;
+        }
+
+
+		while (isNextEventAvailable){
+			if (!getNextEvent(content.get(0))) return;
+			eventNumber++;
+			//System.out.println("isNextEventAvailable: " + isNextEventAvailable);
 		}
 
 		//Verify we got something
-		if (reiScraperRows.size() == 0){
+		if (sorbaScraperRows.size() == 0){
 			System.out.println("Error: No results found on site.");
 			return;
 		}
 
+			System.out.println("Done.");
+/*
 		//Format the data
 		final StringBuilder sb = new StringBuilder();
 		final String headerRow = "Organization/organizer,Title,Description (optional),URL of event,Location,"
@@ -169,151 +195,164 @@ public class SorbaScraper {
 		}*/
 	}
 
-	private static boolean getNextPage(){
+	private static boolean getNextEvent(final Element content){
+		final Elements titleElements = content.getElementsByClass("tribe-events-list-event-title");
+		if (!verifyAtLeastOne(titleElements, "titles")){
+			return false;
+		}
+		if (titleElements.size() == eventNumber){
+			isNextEventAvailable = false;
+			//System.out.println("Getting final event, #" + eventNumber);
+		}else{
+			//System.out.println("Getting event #" + eventNumber);
+		}
+		
+		final String title = titleElements.get(eventNumber - 1).text();
+		
+		final Elements urlElements = titleElements.get(eventNumber - 1).getElementsByClass("tribe-event-url");
+    	if (!verifyOne(urlElements, "url")){
+        	return false;
+        }
+        
+        final String eventUrl = urlElements.get(0).attr("href");
+        
+        final Element parent = titleElements.get(eventNumber - 1).parent();
+        
+        //Date and times
+        final Elements startElements = parent.getElementsByClass("tribe-event-date-start");
+        if (!verifyOne(startElements, "start date and time")){
+        	return false;
+        }
+        final String startDateAndTime = startElements.get(0).text();
+        final String startDateInput = startDateAndTime.split("@")[0].trim();
+        final String startTimeInput = startDateAndTime.split("@")[1].trim();
+        //System.out.println("startDateInput:" + startDateInput + ";startTimeInput:" + startTimeInput+";");
+        final Elements endElements = parent.getElementsByClass("tribe-event-time");
+		if (!verifyOne(endElements, "end time")){
+        	return false;
+        }
+        final String endTimeInput = endElements.get(0).text();
+        final LocalDate startDate = LocalDate.parse(startDateInput);
+        final LocalDate endDate = null; //If there is an event with an end date, do it here
+        final LocalTime startTime = LocalTime.parse(startTimeInput);
+        final LocalTime endTime = LocalTime.parse(endTimeInput);
+        
+        //Location
+        final Elements locationElements = parent.getElementsByClass("tribe-events-venue-details");
+        if (!verifyOne(locationElements, "location")){
+        	return false;
+        }
+        String location = null;
+        if (locationElements.get(0).text().length() > 0){
+        	final String locationTitle = locationElements.get(0).text().split(",")[0] + ", ";
+	        System.out.println("location title:" + locationTitle + ";");
+	        //Address
+	        final Elements addressElements = parent.getElementsByClass("tribe-street-address");
+	        if (!verifyOne(addressElements, "address")){
+        		return false;
+        	}
+	        final String address = addressElements.get(0).text();
+	        //City
+	        final Elements cityElements = parent.getElementsByClass("tribe-locality");
+	        if (!verifyOne(cityElements, "city")){
+        		return false;
+        	}
+	        final String city = cityElements.get(0).text();
+	        //State
+	        final Elements stateElements = parent.getElementsByClass("tribe-region");
+	        if (!verifyOne(stateElements, "state")){
+        		return false;
+        	}
+	        final String state = stateElements.get(0).text();
+	        
+	        //Zip
+	        final Elements zipElements = parent.getElementsByClass("tribe-postal-code");
+	        if (!verifyOne(zipElements, "zip")){
+        		return false;
+        	}
+	        final String zip = zipElements.get(0).text();
+	        
+	        location = address + ", " + city + " " + state + " " + zip;
+        } 
+        else{
+            System.out.println("no location listed for event " + eventNumber);
+        }
+        //Description
+        //
+       	final Elements descriptionElements = parent.getElementsByClass("tribe-events-list-event-description");
+		if (!verifyAtLeastOne(descriptionElements, "description")){
+	        return false;
+        }    	
+        final String description = descriptionElements.get(0).text();
+
+		SorbaScraperRow sorbaScraperRow = new SorbaScraperRow();
+		sorbaScraperRow.title = title;
+		sorbaScraperRow.description = description;
+		sorbaScraperRow.url = eventUrl;
+		sorbaScraperRow.location = (location != null) ? location : "" ;
+		sorbaScraperRow.startDate = startDate;
+		sorbaScraperRow.endDate = endDate;
+		sorbaScraperRow.startTime = startTime;
+		sorbaScraperRow.endTime = endTime;
+//		sorbaScraperRow.cost = costElements.get(i).text();
+		sorbaScraperRows.add(sorbaScraperRow);
 	/*
+        //Go to the page for each event to get full description 
+        //(or is there enough info for each event on the list page?)
 		try {
-			final String URL = URL1 + pageNumber + URL2;
-            final Response res = Jsoup.connect(URL).timeout(JSOUP_TIMEOUT).execute(); 
-            //anything less than 6000 times out for me during normal network conditions; 
-            //8000 is safer during heavy traffic
-
-            final Document doc = res.parse();
-
-            if (doc == null){
-            	System.out.println("Error: doc is null on page " + pageNumber);
-            	return false;
-            }
+			final Response eventResponse = Jsoup.connect(eventUrl).timeout(JSOUP_TIMEOUT).execute(); 
 			
-            final Element content = doc.getElementById("course-results");
-            if (content == null){
-            	System.out.println("Error: content is null on page " + pageNumber);
+			final Document eventDocument = eventResponse.parse();
+
+            if (eventDocument == null){
+            	System.out.println("Error: eventDocument is null at event " + eventNumber);
             	return false;
             }
             
-            //System.out.println("pageNumber: " + pageNumber);
-            
-            if (!content.text().endsWith("Next page")){
-            	isNextPageAvailable = false;
-            }
-            
-			final Elements rows = content.getElementsByClass("card card--parent vertical-push");
-            if (rows == null){
-            	System.out.println("Error: rows is null on page " + pageNumber);
-            	return false;
-            }
-//            System.out.println("rows size: " + rows.size());	
-            		
-            for (final Element row : rows) {
-            	//Even though we're getting a list, it's expected to have only 1 element
-            	final Elements titleElement = row.getElementsByClass("card-title");
-            	if (!verifyOne(titleElement, "title")){
-	            	return false;
-            	}
-            	final String title = titleElement.get(0).text();
-                //System.out.println("title: " + title);
-                
-            	//Even though we're getting a list, we're only interested in the first element
-                final Elements descriptionElement = row.getElementsByClass("card-text");
-            	if (!verifyAtLeastOne(descriptionElement, "description")){
-	            	return false;
-            	}
+            System.out.println("Got the page for event " + eventNumber);
             	
-            	final String description = descriptionElement.get(0).text();
-            	//System.out.println("description: " + description);
-            	
-            	//collection of date elements
-            	final Elements dateCollectionElement = row.getElementsByClass("card-block date-card");
-               	if (!verifyOne(dateCollectionElement, "dateCollectionElement")){
-	            	return false;
-            	}
-            	
-            	final Elements dateTileElements = dateCollectionElement.get(0).getElementsByClass("tile");
-               	if (!verifyAtLeastOne(dateTileElements, "dates")){
-	            	return false;
-            	}
-            	
-            	for (final Element dateTileElement : dateTileElements){
-            		final Elements dateElements = dateTileElement.getElementsByClass("text-muted");
-            		if (!verifyAtLeastOne(dateElements, "date")){
-	            		return false;
-            		}
-            		
-            		final Elements urlElements = dateTileElement.getElementsByClass("link_header-explore");
-            		if (!verifyAtLeastOne(urlElements, "url")){
-	            		return false;
-            		}
-            		
-            		final Elements locationElements = dateTileElement.getElementsByClass("event__location");
-            		if (!verifyAtLeastOne(locationElements, "location")){
-	            		return false;
-            		}
-            		
-            		final Elements timesElements = dateTileElement.getElementsByClass("event__time");
-            		if (!verifyAtLeastOne(timesElements, "times")){
-	            		return false;
-            		}
-            		
-            		final Elements costElements = dateTileElement.getElementsByClass("event__price");
-            		if (!verifyAtLeastOne(costElements, "cost")){
-	            		return false;
-            		}
-            		            							
-					for(int i = 0; i < dateElements.size(); i++){
-	            		//http://www.joda.org/joda-time/apidocs/org/joda/time/format/DateTimeFormat.html
-						final LocalDate startDate = LocalDate.parse(dateElements.get(i).text(), 
-							DateTimeFormat.forPattern("MMM d").withDefaultYear(new LocalDate().getYear()));
-							//TODO: months < this month => next year
-						//System.out.println("startDate: " + startDate);
-						
-						LocalDate endDate = null;
-						String times = timesElements.get(i).text();
-						if (containsNonTimeChar(times)){
-							//Start and end times are followed by an end date
-							//Set end date
-							endDate = getEndDate(times);
-							//Remove end date
-							times = trimEndDate(times);
-						}
-						
-						times = times.replace(" ","");
-						final String[] timeArray = times.split("-");
-						if (timeArray.length == 0){
-			            	System.out.println("Error: No times found on page " + pageNumber);
-        					return false;
-						}
-
-						final LocalTime startTime = LocalTime.parse(timeArray[0], DateTimeFormat.forPattern("h:ma"));
-						//System.out.println("time: " + time.toString("H:m"));
-
-						final LocalTime endTime;
-						if (timeArray.length == 1){
-			            	System.out.println("Warning: No end time found on page " + pageNumber);
-		    	        	endTime = startTime.withHourOfDay(startTime.getHourOfDay() + 1);
-						}else{
-							endTime = LocalTime.parse(timeArray[1], DateTimeFormat.forPattern("h:ma"));
-						}
-												
-						//System.out.println("date: " + dateElements.get(i).text());
-						ReiScraperRow reiScraperRow = new ReiScraperRow();
-						reiScraperRow.title = title;
-						reiScraperRow.description = description;
-						reiScraperRow.url = urlElements.get(i).attr("href");;
-						reiScraperRow.location = locationElements.get(i).text();
-						reiScraperRow.startDate = startDate;
-						reiScraperRow.endDate = endDate;
-						reiScraperRow.startTime = startTime;
-						reiScraperRow.endTime = endTime;
-						reiScraperRow.cost = costElements.get(i).text();
-						reiScraperRows.add(reiScraperRow);
-					}
-            	}
-            }
 
         } catch (Exception e) {
-			System.out.println("Exception on page " + pageNumber);
+			System.out.println("Exception at event " + eventNumber);
             e.printStackTrace();
             return false;
         }
+	*/
+	/*
+for(int i = 0; i < dateElements.size(); i++){
+//http://www.joda.org/joda-time/apidocs/org/joda/time/format/DateTimeFormat.html
+	final LocalDate startDate = LocalDate.parse(dateElements.get(i).text(), 
+		DateTimeFormat.forPattern("MMM d").withDefaultYear(new LocalDate().getYear()));
+		//TODO: months < this month => next year
+	//System.out.println("startDate: " + startDate);
+						
+	LocalDate endDate = null;
+	String times = timesElements.get(i).text();
+	if (containsNonTimeChar(times)){
+		//Start and end times are followed by an end date
+		//Set end date
+		endDate = getEndDate(times);
+		//Remove end date
+		times = trimEndDate(times);
+	}
+
+	times = times.replace(" ","");
+	final String[] timeArray = times.split("-");
+	if (timeArray.length == 0){
+       	System.out.println("Error: No times found at event " + eventNumber);
+		return false;
+	}
+
+	final LocalTime startTime = LocalTime.parse(timeArray[0], DateTimeFormat.forPattern("h:ma"));
+	//System.out.println("time: " + time.toString("H:m"));
+
+	final LocalTime endTime;
+	if (timeArray.length == 1){
+       	System.out.println("Warning: No end time found at event " + eventNumber);
+       	endTime = startTime.withHourOfDay(startTime.getHourOfDay() + 1);
+	}else{
+		endTime = LocalTime.parse(timeArray[1], DateTimeFormat.forPattern("h:ma"));
+	}
         */
         return true;
 	}
@@ -325,7 +364,7 @@ public class SorbaScraper {
             System.out.println("Error: " + fieldName + " is bigger than expected: " + element.size());
             for (Element e : element)
             	System.out.println(fieldName + " : " + e.text());
-            System.out.println("on page " + pageNumber);
+            System.out.println("at event " + eventNumber);
     		return false;
         }
         return true;
@@ -333,11 +372,11 @@ public class SorbaScraper {
 	
 	private static boolean verifyAtLeastOne(final Elements element, final String fieldName){
 		if (element == null){
-    		System.out.println("Error: " + fieldName + " is null on page " + pageNumber);
+    		System.out.println("Error: " + fieldName + " is null at event " + eventNumber);
             return false;
        	}
        	if (element.size() == 0){
-            System.out.println("Error: " + fieldName + " is empty on page " + pageNumber);
+            System.out.println("Error: " + fieldName + " is empty at event " + eventNumber);
     		return false;
         }
         return true;
@@ -394,7 +433,7 @@ public class SorbaScraper {
 		public LocalTime startTime;
 		public LocalTime endTime;
 		public String cost = "IMBA membership (https://win.imba.com/join?chapter=SORBA%20Atlanta)";
-		//public String rsvpInfo; // same as url
+		//public String rsvpInfo; // n/a
 		public SorbaScraperRow(){}
 	}
 }

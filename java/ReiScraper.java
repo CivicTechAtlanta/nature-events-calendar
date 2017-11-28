@@ -46,14 +46,14 @@ Compile:
 Mac:
 javac -cp bin/joda-time-2.9.9.jar -d bin IScraperRow.java 
 javac -cp bin:bin/joda-time-2.9.9.jar:bin/jsoup-1.11.1.jar -d bin ReiScraper.java
-Windows:
+Windowsx [unverified]:
 javac -cp bin\joda-time-2.9.9.jar -d bin IScraperRow.java 
 javac -cp bin;bin\joda-time-2.9.9.jar;bin\jsoup-1.11.1.jar; -d bin ReiScraper.java
 
 Run:
 Mac:
 java -cp bin:bin/joda-time-2.9.9.jar:bin/jsoup-1.11.1.jar ReiScraper
-Windows:
+Windows [unverified]:
 java -cp bin;bin\joda-time-2.9.9.jar;bin\jsoup-1.11.1.jar; ReiScraper
 
 */
@@ -107,8 +107,8 @@ public class ReiScraper {
 		//Format the data
 		final StringBuilder sb = new StringBuilder();
 		final String headerRow = "Organization/organizer,Title,Description (optional),URL of event,Location,"
-			+ "Category (e.g. hiking, birding, volunteering, class),Start Date,End Date (if multi-day),"
-			+ "Start Time,End Time,Free or paid?,RSVP info,Age group (if specified),Dog-friendly (if specified)"
+			+ "\"Category (e.g. hiking, birding, volunteering, class)\",Start Date,End Date (if multi-day),"
+			+ "Start Time,End Time,Free or paid?,RSVP info,Age group (if specified),Dog-friendly (if specified),"
 			+ "Indoor or outdoor?,Imported to Google Calendar";
 		sb.append(headerRow);
 		sb.append("\n");
@@ -214,7 +214,8 @@ public class ReiScraper {
 	            	return false;
             	}
             	
-            	final String description = descriptionElement.get(0).text();
+            	final String description = escapeCommasAndQuotes(descriptionElement.get(0).text());
+            	
             	//System.out.println("description: " + description);
             	
             	//collection of date elements
@@ -255,6 +256,9 @@ public class ReiScraper {
             		}
             		            							
 					for(int i = 0; i < dateElements.size(); i++){
+	            		
+	            		final String location = escapeCommasAndQuotes(locationElements.get(i).text());
+
 	            		//http://www.joda.org/joda-time/apidocs/org/joda/time/format/DateTimeFormat.html
 						final LocalDate startDate = LocalDate.parse(dateElements.get(i).text(), 
 							DateTimeFormat.forPattern("MMM d").withDefaultYear(new LocalDate().getYear()));
@@ -294,7 +298,7 @@ public class ReiScraper {
 						reiScraperRow.title = title;
 						reiScraperRow.description = description;
 						reiScraperRow.url = urlElements.get(i).attr("href");;
-						reiScraperRow.location = locationElements.get(i).text();
+						reiScraperRow.location = location;
 						reiScraperRow.startDate = startDate;
 						reiScraperRow.endDate = endDate;
 						reiScraperRow.startTime = startTime;
@@ -376,6 +380,16 @@ public class ReiScraper {
 		else{
 			return indexOfLastPMChar;
 		}
+	}
+	
+	private static String escapeCommasAndQuotes(String input){
+		if (input.indexOf("\"") != -1){
+			input = input.replace("\"", "\"\"");
+		}
+		if (input.indexOf(",") != -1){
+			input = "\"" + input + "\"";
+		}
+		return input;
 	}
 
 	private static class ReiScraperRow implements IScraperRow{

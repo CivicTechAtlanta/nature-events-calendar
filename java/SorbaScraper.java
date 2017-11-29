@@ -69,7 +69,7 @@ public class SorbaScraper {
 	private static final String URL = "http://sorbaatlanta.org/events/list/?tribe_paged=1&tribe_event_display=list";
 	private static int eventNumber = 1;
 	private static boolean isNextEventAvailable = true;
-	private static final List<IScraperRow> sorbaScraperRows = new ArrayList<>();
+	private static final List<SorbaScraperRow> sorbaScraperRows = new ArrayList<>();
 	private static final int JSOUP_TIMEOUT = 8000;
 
 	public static void main(String[] args) {
@@ -118,9 +118,11 @@ public class SorbaScraper {
             return;
         }
 
-
 		while (isNextEventAvailable){
-			if (!getNextEvent(content.get(0))) return;
+			if (!getNextEvent(content.get(0))) {
+				//Any error encountered in getNextEvent will have already been printed by now
+				return;
+			}
 			eventNumber++;
 			//System.out.println("isNextEventAvailable: " + isNextEventAvailable);
 		}
@@ -130,8 +132,67 @@ public class SorbaScraper {
 			System.out.println("Error: No results found on site.");
 			return;
 		}
-
-			System.out.println("Done.");
+		
+		//Format the data
+		final StringBuilder sb = new StringBuilder();
+		final String headerRow = "Organization/organizer,Title,Description (optional),URL of event,Location,"
+			+ "\"Category (e.g. hiking, birding, volunteering, class)\",Start Date,End Date (if multi-day),"
+			+ "Start Time,End Time,Free or paid?,RSVP info,Age group (if specified),Dog-friendly (if specified),"
+			+ "Indoor or outdoor?,Imported to Google Calendar";
+		sb.append(headerRow);
+		sb.append("\n");
+		for(SorbaScraperRow row : sorbaScraperRows){
+			sb.append(row.organizer);
+			sb.append(",");
+			sb.append(row.title);
+			sb.append(",");
+			sb.append(row.description);
+			sb.append(",");
+			sb.append(row.url);
+			sb.append(",");
+			sb.append(row.location);
+			sb.append(",");
+			//no category sb.append(row);
+			sb.append(",");
+			sb.append(row.startDate);
+			sb.append(",");
+			if (row.endDate != null) sb.append(row.endDate);
+			sb.append(",");
+			if (row.startTime != null) sb.append(row.startTime.toString("HH:mm"));
+			sb.append(",");
+			if (row.endTime != null) sb.append(row.endTime.toString("HH:mm"));
+			sb.append(",");
+			sb.append(row.cost);
+			sb.append(",");
+			//No RSVP Info sb.append(row.url);
+			sb.append(",");
+			//no age group sb.append(row);
+			sb.append(",");
+			//no dog friendly sb.append(row);
+			sb.append(",");
+			//no indoor / outdoor sb.append(row);
+			sb.append(",");
+			sb.append("No");//imported to Google Calendar
+			sb.append("\n");
+		}
+		
+		//System.out.println("output: " + sb.toString());
+		
+		//Write the data to file		
+		try{
+			if (Files.exists(path)){
+				Files.delete(path);
+			}
+			Files.createFile(path);
+			final byte[] bytes = sb.toString().getBytes(); 
+		    Files.write(path, bytes);
+		    
+		    System.out.println("Wrote output to " + fileName);
+		    
+		}catch(Exception e){
+			System.out.println("Exception");
+            e.printStackTrace();
+		}
 /*
 		//Format the data
 		final StringBuilder sb = new StringBuilder();
@@ -232,10 +293,18 @@ public class SorbaScraper {
         	return false;
         }
         final String endTimeInput = endElements.get(0).text();
-        final LocalDate startDate = LocalDate.parse(startDateInput);
+        final LocalDate startDate;
+        if (startDateInput.indexOf(",") == -1){
+        //http://www.joda.org/joda-time/apidocs/org/joda/time/format/DateTimeFormat.html
+        	startDate  = LocalDate.parse(startDateInput, DateTimeFormat.forPattern("MMMM d").withDefaultYear(new LocalDate().getYear()));
+        }else{
+        	startDate  = LocalDate.parse(startDateInput, DateTimeFormat.forPattern("MMMM d, Y"));
+        }
+        
         final LocalDate endDate = null; //If there is an event with an end date, do it here
-        final LocalTime startTime = LocalTime.parse(startTimeInput);
-        final LocalTime endTime = LocalTime.parse(endTimeInput);
+        final LocalTime startTime = LocalTime.parse(startTimeInput, DateTimeFormat.forPattern("h:m a"));
+        //System.out.println("startTime:" + startTime.toString("HH:mm") + ";");
+        final LocalTime endTime = LocalTime.parse(endTimeInput, DateTimeFormat.forPattern("h:m a"));
         
         //Location
         final Elements locationElements = parent.getElementsByClass("tribe-events-venue-details");
@@ -244,8 +313,8 @@ public class SorbaScraper {
         }
         String location = null;
         if (locationElements.get(0).text().length() > 0){
-        	final String locationTitle = locationElements.get(0).text().split(",")[0] + ", ";
-	        System.out.println("location title:" + locationTitle + ";");
+        	final String locationTitle = locationElements.get(0).text().split(",")[0];
+	        //System.out.println("location title:" + locationTitle + ";");
 	        //Address
 	        final Elements addressElements = parent.getElementsByClass("tribe-street-address");
 	        if (!verifyOne(addressElements, "address")){
@@ -272,18 +341,24 @@ public class SorbaScraper {
         	}
 	        final String zip = zipElements.get(0).text();
 	        
-	        location = address + ", " + city + " " + state + " " + zip;
+	        location = escapeCommasAndQuotes(locationTitle + ", " + address + ", " + city + " " + state + " " + zip);
         } 
         else{
             System.out.println("no location listed for event " + eventNumber);
         }
+        
         //Description
-        //
        	final Elements descriptionElements = parent.getElementsByClass("tribe-events-list-event-description");
 		if (!verifyAtLeastOne(descriptionElements, "description")){
 	        return false;
         }    	
-        final String description = descriptionElements.get(0).text();
+        final String description;
+        if (descriptionElements.get(0).text().indexOf(",") == -1){
+        	description = descriptionElements.get(0).text();
+        }
+        else{
+        	description = escapeCommasAndQuotes(descriptionElements.get(0).text());
+        }
 
 		SorbaScraperRow sorbaScraperRow = new SorbaScraperRow();
 		sorbaScraperRow.title = title;
@@ -318,42 +393,6 @@ public class SorbaScraper {
             return false;
         }
 	*/
-	/*
-for(int i = 0; i < dateElements.size(); i++){
-//http://www.joda.org/joda-time/apidocs/org/joda/time/format/DateTimeFormat.html
-	final LocalDate startDate = LocalDate.parse(dateElements.get(i).text(), 
-		DateTimeFormat.forPattern("MMM d").withDefaultYear(new LocalDate().getYear()));
-		//TODO: months < this month => next year
-	//System.out.println("startDate: " + startDate);
-						
-	LocalDate endDate = null;
-	String times = timesElements.get(i).text();
-	if (containsNonTimeChar(times)){
-		//Start and end times are followed by an end date
-		//Set end date
-		endDate = getEndDate(times);
-		//Remove end date
-		times = trimEndDate(times);
-	}
-
-	times = times.replace(" ","");
-	final String[] timeArray = times.split("-");
-	if (timeArray.length == 0){
-       	System.out.println("Error: No times found at event " + eventNumber);
-		return false;
-	}
-
-	final LocalTime startTime = LocalTime.parse(timeArray[0], DateTimeFormat.forPattern("h:ma"));
-	//System.out.println("time: " + time.toString("H:m"));
-
-	final LocalTime endTime;
-	if (timeArray.length == 1){
-       	System.out.println("Warning: No end time found at event " + eventNumber);
-       	endTime = startTime.withHourOfDay(startTime.getHourOfDay() + 1);
-	}else{
-		endTime = LocalTime.parse(timeArray[1], DateTimeFormat.forPattern("h:ma"));
-	}
-        */
         return true;
 	}
 	
@@ -381,7 +420,18 @@ for(int i = 0; i < dateElements.size(); i++){
         }
         return true;
 	}
+
+	private static String escapeCommasAndQuotes(String input){
+		if (input.indexOf("\"") != -1){
+			input = input.replace("\"", "\"\"");
+		}
+		if (input.indexOf(",") != -1){
+			input = "\"" + input + "\"";
+		}
+		return input;
+	}
 	
+	/*
 	private static boolean containsNonTimeChar(final String times){
 		final String timeChars = "1234567890:-amp ";
 		for(char c : times.toCharArray()){
@@ -421,6 +471,7 @@ for(int i = 0; i < dateElements.size(); i++){
 			return indexOfLastPMChar;
 		}
 	}
+	*/
 
 	private static class SorbaScraperRow implements IScraperRow{
 		public final String organizer = "SORBA Atlanta";

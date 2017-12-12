@@ -188,7 +188,12 @@ public class ReiScraper {
             
             //System.out.println("pageNumber: " + pageNumber);
             
-            if (!content.text().endsWith("Next page")){
+            final Elements endElements = content.getElementsByClass("icon-rei-right-arrow");
+            if (!verifyAtLeastOne(endElements, "endElements")){
+            	return false;
+            }
+            final String endDisabled = endElements.get(0).attr("disabled");
+            if (endDisabled != null && endDisabled.equals("disabled")){
             	isNextPageAvailable = false;
             }
             

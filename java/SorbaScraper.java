@@ -18,10 +18,6 @@ import org.jsoup.select.Elements;
 
 /*
 
-IN PROGRESS
-
-==========================================================================================
-
 This java program scrapes the SORBA Atlanta site for events, 
 starting with page 1, and going until there is no Next page.
 

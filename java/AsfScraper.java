@@ -14,6 +14,24 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
 
+/*
+
+Compile:
+Mac:
+javac -cp bin/joda-time-2.9.9.jar -d bin IScraperRow.java 
+javac -cp bin:bin/joda-time-2.9.9.jar:bin/jsoup-1.11.1.jar -d bin AsfScraper.java
+Windowsx [unverified]:
+javac -cp bin\joda-time-2.9.9.jar -d bin IScraperRow.java 
+javac -cp bin;bin\joda-time-2.9.9.jar;bin\jsoup-1.11.1.jar; -d bin AsfScraper.java
+
+Run:
+Mac:
+java -cp bin:bin/joda-time-2.9.9.jar:bin/jsoup-1.11.1.jar AsfScraper
+Windows [unverified]:
+java -cp bin;bin\joda-time-2.9.9.jar;bin\jsoup-1.11.1.jar; AsfScraper
+
+*/
+
 public class AsfScraper {
 
     private static final String ASF_URL = "https://atlantasciencefestival.org/events-2019/";

@@ -9,7 +9,7 @@
   "author": "Code for Atlanta",
   "license": "BSD-3-Clause",
   "dependencies": {
-    "axios": "^0.17.1",
+    "axios": "^0.18.1",
     "json2csv": "^3.11.5",
     "moment": "^2.19.2"
   }
